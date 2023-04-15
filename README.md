@@ -1,2 +1,2 @@
 # raycaster-0101
-Non-working raycaster
+Non-working untextured raycaster, just a hobby.
