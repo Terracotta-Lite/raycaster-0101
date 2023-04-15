@@ -129,12 +129,12 @@ int main( int argc, char **argv ) {
 
 						/* Right Arrow */
 						case SDLK_RIGHT:
-						playerAngle += 0.25;
+						playerAngle += rotspeed;
 						break;
 						
 						/* Left Arrow */
 						case SDLK_LEFT:
-						playerAngle -= 0.25;
+						playerAngle -= rotspeed;
 						break;
 
 						/* Down Arrow */
@@ -242,7 +242,7 @@ int main( int argc, char **argv ) {
 		frametime = (time - oldTime); /* in milliseconds */
 
 		movespeed = frametime / 400.0; /* in squares/second */
-		rotspeed = frametime; /* in radians/second */
+		rotspeed = frametime / 100.0; /* in radians/second */
 		
 		printf("x:%f  y:%f\n", playerX, playerY);
 		 
