@@ -92,7 +92,7 @@ int main( int argc, char *argv[] ) {
 	double playerAngle = PI/2;
 	double movespeed = 0.0875, rotspeed = 0.07;
 	int FPS = 0;
-	int FOV = 100;
+	int FOV = 60;
 
 	if (argc > 1)
 	{
@@ -175,7 +175,7 @@ int main( int argc, char *argv[] ) {
 
 		for (int x = 0; x < SCREEN_WIDTH; x++)
 		{
-			double rayangle = playerAngle - PI*FOV/720 + (PI*FOV*x)/(SCREEN_WIDTH*360);
+			double rayangle = playerAngle - PI*FOV/360 + (PI*FOV*x)/(SCREEN_WIDTH*180);
 
 			double helper_sin = sin(rayangle);
 			double helper_cos = cos(rayangle);
