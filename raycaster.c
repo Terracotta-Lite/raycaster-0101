@@ -2,15 +2,22 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define SCREEN_WIDTH 600
 #define SCREEN_HEIGHT 600
+
+/* Both must be odd numbers
+for some reason it doesnt
+work when the numbers are not the same
+will fix it */
 #define MAP_WIDTH 15
-#define MAP_HEIGHT 8
+#define MAP_HEIGHT 15
 
 #define PI 3.1415926535897932384626433
 #define IDONTWANTTHIS 0
 
+/* obsolete by maze generation
 static const uint8_t map[]=
 {
  7,1,2,3,4,5,6,7,1,2,3,4,5,6,7,
@@ -20,8 +27,16 @@ static const uint8_t map[]=
  3,0,0,0,0,3,0,3,0,0,0,0,0,0,3,
  2,0,0,0,0,3,3,3,0,0,0,0,0,0,2,
  1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+ 2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,
  7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
+ 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
+ 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
+ 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
+ 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
+ 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
+ 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2
 };
+*/
 
 /*
 Log an SDL error with some error message to the output stream of our choice
@@ -31,7 +46,83 @@ void logSDLError( char *msg, const char *error ) {
 	printf( "%s error: %s\n", msg, error );
 }
 
+/* Arrange the N elements of ARRAY in random order.
+   Ony effective if N is much smaller than RAND_MAX;
+   if this may not be the case, use a better random
+   number generator. */
+static void shuffle(int *array, size_t n)
+{
+  if (n > 1) 
+  {
+    size_t i;
+    for (i = 0; i < n - 1; i++) 
+    {
+      size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
+      int t = array[j];
+      array[j] = array[i];
+      array[i] = t;
+    }
+  }
+}
+
+void MAZE_Recurse(int x, int y, uint8_t *mazegrid)
+{
+	int x_1, x_2, y_1, y_2;
+	mazegrid[y * MAP_WIDTH + x] = 1;
+  
+#define MAZE_isUpUsed    (mazegrid[(y + 2) * MAP_WIDTH + x] == 1)
+#define MAZE_isDownUsed  (mazegrid[(y - 2) * MAP_WIDTH + x] == 1)
+#define MAZE_isLeftUsed  (mazegrid[(y * MAP_WIDTH) + x - 2] == 1)
+#define MAZE_isRightUsed (mazegrid[(y * MAP_WIDTH) + x + 2] == 1)
+#define MAZE_isEverywhereUsed (MAZE_isUpUsed && MAZE_isDownUsed && MAZE_isLeftUsed && MAZE_isRightUsed)
+
+	if (MAZE_isEverywhereUsed == 0)
+	{
+		int MAZE_directions[] = {1, 2, 3, 4};
+		shuffle(MAZE_directions, 4);
+		for (int i = 0; i < 4; i++)
+		{
+			switch (MAZE_directions[i])
+			{
+				case 1:
+				y_1 = y - 2;
+				y_2 = y - 1;
+				x_1 = x;
+				x_2 = x;
+				break;
+				  
+				case 2:
+				y_1 = y + 2;
+				y_2 = y + 1;
+				x_1 = x;
+				x_2 = x;
+				break;
+				
+				case 3:
+				x_1 = x - 2;
+				x_2 = x - 1;
+				y_1 = y;
+				y_2 = y;
+				break;
+
+				case 4:
+				x_1 = x + 2;
+				x_2 = x + 1;
+				y_1 = y;
+				y_2 = y;
+				break;
+			}
+			if (mazegrid[y_1 * MAP_WIDTH + x_1] != 1)
+			{
+				mazegrid[y_2 * MAP_WIDTH + x_2] = 1;
+				MAZE_Recurse(x_1, y_1, mazegrid);
+			}
+		}
+	}
+}
+
 int main( int argc, char *argv[] ) {
+	srand(time(NULL));
 	uint8_t EXIT_CODE = 0;
 
 	/* Initialize SDL */
@@ -57,6 +148,49 @@ int main( int argc, char *argv[] ) {
 		goto quit_3;
 	}
 
+
+	/* possible values
+	   0 for wall
+	   1 for path
+	   2 for used(insider) */
+	uint8_t map[MAP_WIDTH*MAP_HEIGHT];
+  
+	for (int i = 0; i < MAP_WIDTH; i++)
+	{
+		for (int j = 0; j < MAP_HEIGHT; j++)
+		{
+			if (i % 2 == 1 || j % 2 == 1)
+			{
+				map[j * MAP_WIDTH + i] = 2;
+			}
+			if (i == 0 || j == 0 || i == MAP_WIDTH - 1 || j == MAP_HEIGHT - 1)
+			{
+				map[j * MAP_WIDTH + i] = 1;
+			}
+		}
+	}
+
+	MAZE_Recurse((MAP_WIDTH - (MAP_WIDTH % 4))/2, (MAP_HEIGHT - (MAP_HEIGHT % 4))/2, map);
+
+	for (int i = 0; i < MAP_WIDTH; i++)
+	{
+		for (int j = 0; j < MAP_HEIGHT; j++)
+		{
+			int mazepos = j * MAP_HEIGHT + i;
+			if (map[mazepos] == 2)
+			{
+				map[mazepos] = (rand() % 7) + 1; 
+				printf("O");
+			}
+			else
+			{
+				map[mazepos] = 0;
+				printf(" ");
+			}
+		}
+		printf("\n");
+	}
+
 	/* Game Code */
 
 	/* Variables */
@@ -70,7 +204,6 @@ int main( int argc, char *argv[] ) {
 
 	if (argc > 1)
 	{
-	printf("hllo");
 	FPS = atoi(argv[1]);
 	}
 
@@ -243,7 +376,7 @@ int main( int argc, char *argv[] ) {
 		SDL_SetRenderDrawColor(renderer, 0, 255, 0, 0);
 		SDL_RenderDrawLine(renderer, 55, 55, 55 - cos(playerAngle) * 35, 55 - sin(playerAngle) * 35);
 
-		printf("%f, %f\n", playerX, playerY);
+		/*printf("%f, %f\n", playerX, playerY);*/
 
 		oldTime = time;
 		time = SDL_GetTicks64(); /* in milliseconds */
