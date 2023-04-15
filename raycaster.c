@@ -242,7 +242,7 @@ int main( int argc, char **argv ) {
 		frametime = (time - oldTime); /* in milliseconds */
 
 		movespeed = frametime / 400.0; /* in squares/second */
-		rotspeed = frametime / 100.0; /* in radians/second */
+		rotspeed = frametime / 500.0; /* in radians/second */
 		
 		printf("x:%f  y:%f\n", playerX, playerY);
 		 
