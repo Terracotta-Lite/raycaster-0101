@@ -23,32 +23,6 @@ static const uint8_t map[]=
  7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
 };
 
-#ifdef IDONTWANTTHIS
-/*
- 111
-2   3
-2   3
- 444
-5   6
-5   6
- 777
-*/
-static const uint8_t digits[]=
-{
-/*1,2,3,4,5,6,7*/
-  1,1,1,0,1,1,1, /* 0 */
-  0,0,1,0,0,1,0, /* 1 */
-  1,0,1,1,1,0,1, /* 2 */
-  1,0,1,1,0,1,1, /* 3 */
-  0,1,1,1,0,1,0, /* 4 */
-  1,1,0,1,0,1,1, /* 5 */
-  1,1,0,1,1,1,1, /* 6 */
-  1,1,1,0,0,1,0, /* 7 */
-  1,1,1,1,1,1,1, /* 8 */
-  1,1,1,1,0,1,1  /* 9 */
-};
-#endif
-
 /*
 Log an SDL error with some error message to the output stream of our choice
 @param msg The error message to write, format will be msg error: SDL_GetError()
