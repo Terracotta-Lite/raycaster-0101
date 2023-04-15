@@ -92,7 +92,7 @@ int main( int argc, char *argv[] ) {
 	double playerAngle = PI/2;
 	double movespeed = 0.0875, rotspeed = 0.07;
 	int FPS = 0;
-	int FOV = 0;
+	int FOV = 100;
 
 	if (argc > 1)
 	{
@@ -289,8 +289,6 @@ int main( int argc, char *argv[] ) {
 
 		movespeed = frametime / 400.0; /* in squares/second */
 		rotspeed = frametime / 500.0; /* in radians/second */
-
-		FOV = time / 100.0;
 
 		/* Take a quick break after all that hard work */
 		if (FPS) SDL_Delay( (int)(1000/FPS) );
