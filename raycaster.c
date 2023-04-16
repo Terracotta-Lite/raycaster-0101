@@ -349,7 +349,7 @@ int main( int argc, char *argv[] ) {
 			else
 			{
 				stepY = 1;
-				rayDistX = (mapX + 1 - playerX) * deltaDistX;
+				rayDistX = (mapX + 1.0 - playerX) * deltaDistX;
 			}
 			
 			if (helper_sin < 0)
@@ -360,7 +360,7 @@ int main( int argc, char *argv[] ) {
 			else
 			{
 				stepY = 1;
-				rayDistY = (mapY + 1 - playerY) * deltaDistY;
+				rayDistY = (mapY + 1.0 - playerY) * deltaDistY;
 			}
 
 			while (hit == 0)
@@ -393,6 +393,7 @@ int main( int argc, char *argv[] ) {
 			}
 
 			distBuffer[x] = ultimateDist;
+
 			lineHeight = (int)(SCREEN_WIDTH / ultimateDist);
 			
 #define DRAW_Y1 (-lineHeight / 2 + SCREEN_HEIGHT / 2 < 0) ? 0 : -lineHeight / 2 + SCREEN_HEIGHT / 2
@@ -424,18 +425,10 @@ int main( int argc, char *argv[] ) {
 		frametime = (time - oldTime); /* in milliseconds */
 
 		movespeed = frametime / 400.0; /* in squares/second */
-		rotspeed = frametime / 500.0; /* in radians/second */
+		rotspeed = frametime / 250.0; /* in radians/second */
 		 
 		/* Update the screen */
 		SDL_RenderPresent( renderer );
-
-		oldTime = time;
-		time = SDL_GetTicks64(); /* in milliseconds */
-
-		frametime = (time - oldTime); /* in milliseconds */
-
-		movespeed = frametime / 400.0; /* in squares/second */
-		rotspeed = frametime / 250.0; /* in radians/second */
 
 		/* Take a quick break after all that hard work */
 		if (FPS) { SDL_Delay( (int)(1000/FPS) ); }
