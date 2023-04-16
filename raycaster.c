@@ -11,32 +11,14 @@
 for some reason it doesnt
 work when the numbers are not the same
 will fix it */
-#define MAP_WIDTH 15
-#define MAP_HEIGHT 15
+#define MAP_WIDTH 31
+#define MAP_HEIGHT 31
 
 #define PI 3.1415926535897932384626433
 #define IDONTWANTTHIS 0
 
-/* obsolete by maze generation
-static const uint8_t map[]=
-{
- 7,1,2,3,4,5,6,7,1,2,3,4,5,6,7,
- 6,0,0,0,0,0,0,0,0,0,0,0,0,0,6,
- 5,0,3,0,0,0,0,0,0,0,0,0,0,0,5,
- 4,0,0,0,0,3,3,3,0,0,0,0,0,0,4,
- 3,0,0,0,0,3,0,3,0,0,0,0,0,0,3,
- 2,0,0,0,0,3,3,3,0,0,0,0,0,0,2,
- 1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
- 2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,
- 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
- 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
- 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
- 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
- 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
- 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2,
- 7,6,5,4,3,2,1,2,3,4,5,6,7,1,2
-};
-*/
+SDL_Window *window = NULL;
+SDL_Renderer *renderer = NULL;
 
 /*
 Log an SDL error with some error message to the output stream of our choice
@@ -44,6 +26,30 @@ Log an SDL error with some error message to the output stream of our choice
 */
 void logSDLError( char *msg, const char *error ) {
 	printf( "%s error: %s\n", msg, error );
+}
+
+SDL_Texture *loadTexture( const char *path )
+{
+	SDL_Texture *newTexture = NULL;
+	
+	SDL_Surface *loadedSurface = SDL_LoadBMP(path);
+
+	if (loadedSurface == NULL)
+	{
+		logSDLError("SDL_LoadBMP", SDL_GetError());
+	}
+	else
+	{
+		newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
+		if (newTexture == NULL)
+		{
+			logSDLError("SDL_CreateTextureFromSurface", SDL_GetError());
+		}
+
+		SDL_FreeSurface(loadedSurface);
+	}
+
+	return newTexture;
 }
 
 /* Arrange the N elements of ARRAY in random order.
@@ -65,7 +71,7 @@ static void shuffle(int *array, size_t n)
   }
 }
 
-void MAZE_Recurse(int x, int y, uint8_t *mazegrid)
+static void MAZE_Recurse(int x, int y, uint8_t *mazegrid)
 {
 	int x_1, x_2, y_1, y_2;
 	mazegrid[y * MAP_WIDTH + x] = 1;
@@ -121,6 +127,56 @@ void MAZE_Recurse(int x, int y, uint8_t *mazegrid)
 	}
 }
 
+static void createMap(uint8_t *mazegrid)
+{
+	for (int i = 0; i < MAP_WIDTH; i++)
+	{
+		for (int j = 0; j < MAP_HEIGHT; j++)
+		{
+			if (i % 2 == 1 || j % 2 == 1)
+			{
+				mazegrid[j * MAP_WIDTH + i] = 2;
+			}
+			if (i == 0 || j == 0 || i == MAP_WIDTH - 1 || j == MAP_HEIGHT - 1)
+			{
+				mazegrid[j * MAP_WIDTH + i] = 1;
+			}
+		}
+	}
+
+	MAZE_Recurse((MAP_WIDTH - (MAP_WIDTH % 4))/2, (MAP_HEIGHT - (MAP_HEIGHT % 4))/2, mazegrid);
+
+	for (int i = 0; i < MAP_WIDTH; i++)
+	{
+		for (int j = 0; j < MAP_HEIGHT; j++)
+		{
+			int mazepos = j * MAP_HEIGHT + i;
+			if (mazegrid[mazepos] == 2)
+			{
+				mazegrid[mazepos] = (rand() % 7) + 1; 
+				printf("O");
+			}
+			else
+			{
+				mazegrid[mazepos] = 0;
+				printf(" ");
+			}
+		}
+		printf("\n");
+	}
+}
+
+/* possible values
+   0 for wall
+   1 for path
+   2 for used(insider) */
+uint8_t map[MAP_WIDTH*MAP_HEIGHT];
+
+/* 1D zortbuffer, ordered by vertical slices */
+double distBuffer[SCREEN_WIDTH];
+
+void sortSprites(int *order, double *dist, int amount);
+
 int main( int argc, char *argv[] ) {
 	srand(time(NULL));
 	uint8_t EXIT_CODE = 0;
@@ -148,48 +204,7 @@ int main( int argc, char *argv[] ) {
 		goto quit_3;
 	}
 
-
-	/* possible values
-	   0 for wall
-	   1 for path
-	   2 for used(insider) */
-	uint8_t map[MAP_WIDTH*MAP_HEIGHT];
-  
-	for (int i = 0; i < MAP_WIDTH; i++)
-	{
-		for (int j = 0; j < MAP_HEIGHT; j++)
-		{
-			if (i % 2 == 1 || j % 2 == 1)
-			{
-				map[j * MAP_WIDTH + i] = 2;
-			}
-			if (i == 0 || j == 0 || i == MAP_WIDTH - 1 || j == MAP_HEIGHT - 1)
-			{
-				map[j * MAP_WIDTH + i] = 1;
-			}
-		}
-	}
-
-	MAZE_Recurse((MAP_WIDTH - (MAP_WIDTH % 4))/2, (MAP_HEIGHT - (MAP_HEIGHT % 4))/2, map);
-
-	for (int i = 0; i < MAP_WIDTH; i++)
-	{
-		for (int j = 0; j < MAP_HEIGHT; j++)
-		{
-			int mazepos = j * MAP_HEIGHT + i;
-			if (map[mazepos] == 2)
-			{
-				map[mazepos] = (rand() % 7) + 1; 
-				printf("O");
-			}
-			else
-			{
-				map[mazepos] = 0;
-				printf(" ");
-			}
-		}
-		printf("\n");
-	}
+	createMap(map);
 
 	/* Game Code */
 
@@ -201,7 +216,8 @@ int main( int argc, char *argv[] ) {
 	double movespeed = 0.0875, rotspeed = 0.07;
 	int FPS = 0;
 	int FOV = 60;
-
+	double newX;
+	double newY;
 	if (argc > 1)
 	{
 	FPS = atoi(argv[1]);
@@ -296,6 +312,7 @@ int main( int argc, char *argv[] ) {
 
 			double deltaDistX = (helper_cos == 0) ? 1e30 : fabs(1 / helper_cos);
 			double deltaDistY = (helper_sin == 0) ? 1e30 : fabs(1 / helper_sin);
+			double ultimateDist;
 			int lineHeight;
 
 			int8_t stepX;
@@ -348,12 +365,15 @@ int main( int argc, char *argv[] ) {
 
 			if (side == 0)
 			{
-			lineHeight = (int)(SCREEN_WIDTH / (rayDistX - deltaDistX) / cos(rayangle - playerAngle));
+			ultimateDist = (rayDistX - deltaDistX) * cos(rayangle - playerAngle);
 			}
 			else
 			{
-			lineHeight = (int)(SCREEN_WIDTH / (rayDistY - deltaDistY) / cos(rayangle - playerAngle));
+			ultimateDist = (rayDistY - deltaDistY) * cos(rayangle - playerAngle);
 			}
+
+			distBuffer[x] = ultimateDist;
+			lineHeight = (int)(SCREEN_WIDTH / ultimateDist);
 			
 #define DRAW_Y1 (-lineHeight / 2 + SCREEN_HEIGHT / 2 < 0) ? 0 : -lineHeight / 2 + SCREEN_HEIGHT / 2
 #define DRAW_Y2 (lineHeight / 2 + SCREEN_HEIGHT / 2 < SCREEN_HEIGHT) ? lineHeight / 2 + SCREEN_HEIGHT / 2 : SCREEN_HEIGHT - 1
