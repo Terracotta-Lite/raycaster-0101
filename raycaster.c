@@ -15,7 +15,6 @@ will fix it */
 #define MAP_HEIGHT 31
 
 #define PI 3.1415926535897932384626433
-#define IDONTWANTTHIS 0
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
@@ -166,10 +165,6 @@ static void createMap(uint8_t *mazegrid)
 	}
 }
 
-/* possible values
-   0 for wall
-   1 for path
-   2 for used(insider) */
 uint8_t map[MAP_WIDTH*MAP_HEIGHT];
 
 /* 1D zortbuffer, ordered by vertical slices */
@@ -210,20 +205,34 @@ int main( int argc, char *argv[] ) {
 
 	/* Variables */
 	uint8_t quit = 0;
+
+	int FOV = 60;
+	int FPS = 0;
+	double planeX = atan(FOV/100.0);
+	double planeY = 1;
+
 	double playerX = 4;
 	double playerY = 4;
-	double playerAngle = PI/2;
+	/*double playerAngle = PI/2;*/
+	double dirX = -1;
+	double dirY = 0;
 	double movespeed = 0.0875, rotspeed = 0.07;
-	int FPS = 0;
-	int FOV = 60;
+
 	double newX;
 	double newY;
+	double rotcos;
+	double rotsin;
+	double oldDirX;
+	double oldPlaneX;
+
 	if (argc > 1)
 	{
 	FPS = atoi(argv[1]);
 	}
 
-	long long int time = 0, oldTime = 0, frametime;
+	long long unsigned int time = 0;
+	long long unsigned int oldTime = 0;
+	long long unsigned int frametime;
 	
 	SDL_Event e;
 	while ( quit == 0 ) {
@@ -251,8 +260,8 @@ int main( int argc, char *argv[] ) {
 						case SDLK_w:
 						/* TODO: Fix getting into block because of the order of checks */
 						
-						double newX = cos(playerAngle) * movespeed;
-						double newY = sin(playerAngle) * movespeed;
+						newX = dirX * movespeed;
+						newY = dirY * movespeed;
 						
 #define MAPPOSX ((int)(playerY) * MAP_WIDTH + (int)(playerX + newX))
 #define MAPPOSY ((int)(playerY + newY) * MAP_WIDTH + (int)(playerX))
@@ -267,20 +276,26 @@ int main( int argc, char *argv[] ) {
 
 						/* Right Arrow */
 						case SDLK_RIGHT:
-						playerAngle += rotspeed;
+						rotcos = cos(-rotspeed);
+						rotsin = sin(-rotspeed);
+						oldDirX = dirX;
+						dirX = dirX * rotcos - dirY * rotsin;
+						dirY = oldDirX * rotsin + dirY * rotcos;
+						oldPlaneX = planeX;
+						planeX = planeX * rotcos - planeY * rotsin;
+						planeY = oldPlaneX * rotsin + planeY * rotcos;
 						break;
 						
 						/* Left Arrow */
 						case SDLK_LEFT:
-						playerAngle -= rotspeed;
-						break;
-
-						/* Down Arrow */
-						case SDLK_DOWN:
-						break;
-						
-						/* Space */
-						case SDLK_SPACE:
+						rotcos = cos(rotspeed);
+						rotsin = sin(rotspeed);
+						oldDirX = dirX;
+						dirX = dirX * rotcos - dirY * rotsin;
+						dirY = oldDirX * rotsin + dirY * rotcos;
+						oldPlaneX = planeX;
+						planeX = planeX * rotcos - planeY * rotsin;
+						planeY = oldPlaneX * rotsin + planeY * rotcos;
 						break;
 
 					}
@@ -288,7 +303,7 @@ int main( int argc, char *argv[] ) {
 			}
 		}
 
-		playerAngle = fmod(playerAngle + 2*PI, 2*PI);
+		/*playerAngle = fmod(playerAngle + 2*PI, 2*PI);*/
 
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 
@@ -298,10 +313,15 @@ int main( int argc, char *argv[] ) {
 
 		for (int x = 0; x < SCREEN_WIDTH; x++)
 		{
-			double rayangle = playerAngle - PI*FOV/360 + (PI*FOV*x)/(SCREEN_WIDTH*180);
+			/*double rayangle = playerAngle - PI*FOV/360 + (PI*FOV*x)/(SCREEN_WIDTH*180);*/
+			double cameraX = 2 * x / (double)SCREEN_WIDTH - 1;
+			double helper_cos = dirX + planeX * cameraX;
+			double helper_sin = dirY + planeY * cameraX;
 
+			/*
 			double helper_sin = sin(rayangle);
 			double helper_cos = cos(rayangle);
+			*/
 
 			int mapX = (int)(playerX);
 			int mapY = (int)(playerY);
@@ -365,11 +385,11 @@ int main( int argc, char *argv[] ) {
 
 			if (side == 0)
 			{
-			ultimateDist = (rayDistX - deltaDistX) * cos(rayangle - playerAngle);
+			ultimateDist = (rayDistX - deltaDistX);
 			}
 			else
 			{
-			ultimateDist = (rayDistY - deltaDistY) * cos(rayangle - playerAngle);
+			ultimateDist = (rayDistY - deltaDistY);
 			}
 
 			distBuffer[x] = ultimateDist;
@@ -378,7 +398,7 @@ int main( int argc, char *argv[] ) {
 #define DRAW_Y1 (-lineHeight / 2 + SCREEN_HEIGHT / 2 < 0) ? 0 : -lineHeight / 2 + SCREEN_HEIGHT / 2
 #define DRAW_Y2 (lineHeight / 2 + SCREEN_HEIGHT / 2 < SCREEN_HEIGHT) ? lineHeight / 2 + SCREEN_HEIGHT / 2 : SCREEN_HEIGHT - 1
 
-			SDL_SetRenderDrawColor(renderer, (map[mapPos] & 4)*255, (map[mapPos] & 2)*255, (map[mapPos] & 1)*255, 0);
+			SDL_SetRenderDrawColor(renderer, (map[mapPos] & 4)*63, (map[mapPos] & 2)*63, (map[mapPos] & 1)*63, 0);
 			SDL_RenderDrawLine(renderer, x, DRAW_Y1, x, DRAW_Y2); 
 
 #undef DRAW_Y1
@@ -394,7 +414,7 @@ int main( int argc, char *argv[] ) {
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 		SDL_RenderFillRect(renderer, &plane);
 		SDL_SetRenderDrawColor(renderer, 0, 255, 0, 0);
-		SDL_RenderDrawLine(renderer, 55, 55, 55 - cos(playerAngle) * 35, 55 - sin(playerAngle) * 35);
+		SDL_RenderDrawLine(renderer, 55, 55, 55 - dirX * 35, 55 - dirY * 35);
 
 		/*printf("%f, %f\n", playerX, playerY);*/
 
@@ -415,10 +435,11 @@ int main( int argc, char *argv[] ) {
 		frametime = (time - oldTime); /* in milliseconds */
 
 		movespeed = frametime / 400.0; /* in squares/second */
-		rotspeed = frametime / 500.0; /* in radians/second */
+		rotspeed = frametime / 250.0; /* in radians/second */
 
 		/* Take a quick break after all that hard work */
-		if (FPS) SDL_Delay( (int)(1000/FPS) );
+		if (FPS) { SDL_Delay( (int)(1000/FPS) ); }
+		else     { SDL_Delay( 1               ); }
 
 	}
 	
