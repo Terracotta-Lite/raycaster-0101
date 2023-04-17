@@ -255,7 +255,7 @@ int main( int argc, char *argv[] ) {
 					quit = 1;
 					break;
 					
-					/* ESCAPE (for quit) */
+					/* ESCAPE (to get out of mouse capture) */
 					case SDLK_ESCAPE:
 					SDL_ShowCursor(SDL_ENABLE);
 					SDL_CaptureMouse(SDL_FALSE);
@@ -265,8 +265,6 @@ int main( int argc, char *argv[] ) {
 
 					case SDLK_UP:
 					case SDLK_w:
-					/* TODO: Fix getting into block because of the order of checks */
-					
 					newX = dirX * movespeed;
 					newY = dirY * movespeed;
 					
@@ -278,10 +276,23 @@ int main( int argc, char *argv[] ) {
 
 #undef MAPPOSX
 #undef MAPPOSY
-					
 					break;
 
-					/* Right Arrow */
+					case SDLK_DOWN:
+					case SDLK_s:
+					newX = dirX * movespeed;
+					newY = dirY * movespeed;
+					
+#define MAPPOSX ((int)(playerY) * MAP_WIDTH + (int)(playerX - newX))
+#define MAPPOSY ((int)(playerY - newY) * MAP_WIDTH + (int)(playerX))
+
+					playerX -= (map[MAPPOSX] == 0) * newX;
+					playerY -= (map[MAPPOSY] == 0) * newY;
+
+#undef MAPPOSX
+#undef MAPPOSY
+					break;
+
 					case SDLK_RIGHT:
 					rotcos = cos(-rotspeed);
 					rotsin = sin(-rotspeed);
@@ -293,7 +304,6 @@ int main( int argc, char *argv[] ) {
 					planeY = oldPlaneX * rotsin + planeY * rotcos;
 					break;
 					
-					/* Left Arrow */
 					case SDLK_LEFT:
 					rotcos = cos(rotspeed);
 					rotsin = sin(rotspeed);
