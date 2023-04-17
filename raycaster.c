@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define SCREEN_WIDTH 600
+#define SCREEN_WIDTH 1000
 #define SCREEN_HEIGHT 600
 
 /* Both must be odd numbers
@@ -233,6 +233,9 @@ int main( int argc, char *argv[] ) {
 	long long unsigned int time = 0;
 	long long unsigned int oldTime = 0;
 	long long unsigned int frametime;
+
+	SDL_CaptureMouse(SDL_TRUE);
+	SDL_ShowCursor(SDL_DISABLE);
 	
 	SDL_Event e;
 	while ( quit == 0 ) {
@@ -243,63 +246,85 @@ int main( int argc, char *argv[] ) {
 					break;
 			
 				case SDL_KEYDOWN:
-					switch ( e.key.keysym.sym ) {
+				switch ( e.key.keysym.sym ) {
 
-						/* Mission Critical */
+					/* Mission Critical */
 
-						/* Q (for quit) */
-						case SDLK_q:
-						/* ESCAPE (for quit) */
-						case SDLK_ESCAPE:
-						quit = 1;
-						break;
-						
-						/* -- Player Movement -- */
+					/* Q (for quit) */
+					case SDLK_q:
+					quit = 1;
+					break;
+					
+					/* ESCAPE (for quit) */
+					case SDLK_ESCAPE:
+					SDL_ShowCursor(SDL_ENABLE);
+					SDL_CaptureMouse(SDL_FALSE);
+					break;
+					
+					/* -- Player Movement -- */
 
-						case SDLK_UP:
-						case SDLK_w:
-						/* TODO: Fix getting into block because of the order of checks */
-						
-						newX = dirX * movespeed;
-						newY = dirY * movespeed;
-						
+					case SDLK_UP:
+					case SDLK_w:
+					/* TODO: Fix getting into block because of the order of checks */
+					
+					newX = dirX * movespeed;
+					newY = dirY * movespeed;
+					
 #define MAPPOSX ((int)(playerY) * MAP_WIDTH + (int)(playerX + newX))
 #define MAPPOSY ((int)(playerY + newY) * MAP_WIDTH + (int)(playerX))
 
-						playerX += (map[MAPPOSX] == 0) * newX;
-						playerY += (map[MAPPOSY] == 0) * newY;
+					playerX += (map[MAPPOSX] == 0) * newX;
+					playerY += (map[MAPPOSY] == 0) * newY;
 
 #undef MAPPOSX
 #undef MAPPOSY
-						
-						break;
-
-						/* Right Arrow */
-						case SDLK_RIGHT:
-						rotcos = cos(-rotspeed);
-						rotsin = sin(-rotspeed);
-						oldDirX = dirX;
-						dirX = dirX * rotcos - dirY * rotsin;
-						dirY = oldDirX * rotsin + dirY * rotcos;
-						oldPlaneX = planeX;
-						planeX = planeX * rotcos - planeY * rotsin;
-						planeY = oldPlaneX * rotsin + planeY * rotcos;
-						break;
-						
-						/* Left Arrow */
-						case SDLK_LEFT:
-						rotcos = cos(rotspeed);
-						rotsin = sin(rotspeed);
-						oldDirX = dirX;
-						dirX = dirX * rotcos - dirY * rotsin;
-						dirY = oldDirX * rotsin + dirY * rotcos;
-						oldPlaneX = planeX;
-						planeX = planeX * rotcos - planeY * rotsin;
-						planeY = oldPlaneX * rotsin + planeY * rotcos;
-						break;
-
-					}
+					
 					break;
+
+					/* Right Arrow */
+					case SDLK_RIGHT:
+					rotcos = cos(-rotspeed);
+					rotsin = sin(-rotspeed);
+					oldDirX = dirX;
+					dirX = dirX * rotcos - dirY * rotsin;
+					dirY = oldDirX * rotsin + dirY * rotcos;
+					oldPlaneX = planeX;
+					planeX = planeX * rotcos - planeY * rotsin;
+					planeY = oldPlaneX * rotsin + planeY * rotcos;
+					break;
+					
+					/* Left Arrow */
+					case SDLK_LEFT:
+					rotcos = cos(rotspeed);
+					rotsin = sin(rotspeed);
+					oldDirX = dirX;
+					dirX = dirX * rotcos - dirY * rotsin;
+					dirY = oldDirX * rotsin + dirY * rotcos;
+					oldPlaneX = planeX;
+					planeX = planeX * rotcos - planeY * rotsin;
+					planeY = oldPlaneX * rotsin + planeY * rotcos;
+					break;
+
+				}
+				break;
+
+				case SDL_MOUSEBUTTONDOWN:
+				SDL_ShowCursor(SDL_DISABLE);
+				SDL_CaptureMouse(SDL_TRUE);
+				break;
+
+				case SDL_MOUSEMOTION:
+				rotcos = cos(rotspeed * e.motion.xrel / -7.0);
+				rotsin = sin(rotspeed * e.motion.xrel / -7.0);
+				oldDirX = dirX;
+				dirX = dirX * rotcos - dirY * rotsin;
+				dirY = oldDirX * rotsin + dirY * rotcos;
+				oldPlaneX = planeX;
+				planeX = planeX * rotcos - planeY * rotsin;
+				planeY = oldPlaneX * rotsin + planeY * rotcos;
+				break;
+				
+					
 			}
 		}
 
@@ -317,11 +342,6 @@ int main( int argc, char *argv[] ) {
 			double cameraX = 2 * x / (double)SCREEN_WIDTH - 1;
 			double helper_cos = dirX + planeX * cameraX;
 			double helper_sin = dirY + planeY * cameraX;
-
-			/*
-			double helper_sin = sin(rayangle);
-			double helper_cos = cos(rayangle);
-			*/
 
 			int mapX = (int)(playerX);
 			int mapY = (int)(playerY);
@@ -417,7 +437,7 @@ int main( int argc, char *argv[] ) {
 		SDL_SetRenderDrawColor(renderer, 0, 255, 0, 0);
 		SDL_RenderDrawLine(renderer, 55, 55, 55 - dirX * 35, 55 - dirY * 35);
 
-		printf("%f, %f\n", playerX, playerY);
+		/*printf("%f, %f\n", playerX, playerY);*/
 
 		oldTime = time;
 		time = SDL_GetTicks64(); /* in milliseconds */
