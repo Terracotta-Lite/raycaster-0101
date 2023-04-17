@@ -1,4 +1,8 @@
-#include <SDL2/SDL.h>
+#ifdef _WIN32
+  	#include "SDL.h"
+#else
+	#include <SDL2/SDL.h>
+#endif
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -18,6 +22,8 @@ will fix it */
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
+
+double wavTimestamps[] = {0.0, 3.58, 5.38};
 
 /*
 Log an SDL error with some error message to the output stream of our choice
@@ -177,7 +183,8 @@ int main( int argc, char *argv[] ) {
 	uint8_t EXIT_CODE = 0;
 
 	/* Initialize SDL */
-	if ( SDL_Init( SDL_INIT_VIDEO ) != 0 ) {
+	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) != 0 )
+	{
 		logSDLError( "SDL_Init" , SDL_GetError() );
 		EXIT_CODE = 1;
 		goto quit_1;
@@ -185,19 +192,44 @@ int main( int argc, char *argv[] ) {
 	
 	/* Create Window */
 	SDL_Window *window = SDL_CreateWindow( "Raycaster", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE );
-	if ( window == NULL ) {
-		logSDLError( "CreateWindow", SDL_GetError() );
+	if ( window == NULL )
+	{
+		logSDLError( "SDL_CreateWindow", SDL_GetError() );
 		EXIT_CODE = 2;
 		goto quit_2;
 	}
 
 	/* Create Renderer */
 	SDL_Renderer *renderer = SDL_CreateRenderer( window,  -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC );
-	if ( renderer == NULL ) {
+	if ( renderer == NULL )
+	{
 		logSDLError( "SDL_CreateRenderer", SDL_GetError() );
 		EXIT_CODE = 3;
 		goto quit_3;
 	}
+
+	Uint32 wavLength;
+	Uint8 *wavBuffer;
+	SDL_AudioSpec wavSpec;
+#define IS_LOAD_FAIL (SDL_LoadWAV("sound.wav", &wavSpec, &wavBuffer, &wavLength) == NULL)
+	if (IS_LOAD_FAIL)
+	{
+		logSDLError("SDL_LoadWAV", SDL_GetError());
+		EXIT_CODE = 4;
+		goto quit_4;
+	}
+
+	SDL_AudioDeviceID deviceID = SDL_OpenAudioDevice(NULL, 0, &wavSpec, NULL, 0);
+	if (deviceID == 0)
+	{
+		logSDLError("SDL_OpenAudioDevice", SDL_GetError());
+		EXIT_CODE = 5;
+		goto quit_5;
+	}
+
+	SDL_QueueAudio(deviceID, wavBuffer, wavLength);
+
+	SDL_PauseAudioDevice(deviceID, 0);
 
 	createMap(map);
 
@@ -208,12 +240,12 @@ int main( int argc, char *argv[] ) {
 
 	int FOV = 80;
 	int FPS = 0;
-	double planeX = atan(FOV/100.0);
-	double planeY = 1;
+	double planeX = 0;
+	double planeY = atan(FOV/100.0);
 
 	double playerX = (MAP_WIDTH - (MAP_WIDTH % 4))/2 + 0.5;
 	double playerY = (MAP_HEIGHT - (MAP_HEIGHT % 4))/2 + 0.5;
-	/*double playerAngle = PI/2;*/
+	
 	double dirX = -1;
 	double dirY = 0;
 	double movespeed = 0.0875, rotspeed = 0.07;
@@ -345,7 +377,6 @@ int main( int argc, char *argv[] ) {
 		/* Clear the renderer */
 		SDL_RenderClear( renderer );
 
-
 		for (int x = 0; x < SCREEN_WIDTH; x++)
 		{
 			/*double rayangle = playerAngle - PI*FOV/360 + (PI*FOV*x)/(SCREEN_WIDTH*180);*/
@@ -465,6 +496,10 @@ int main( int argc, char *argv[] ) {
 		else     { SDL_Delay( 1               ); }
 
 	}
+
+	quit_5: SDL_CloseAudioDevice(deviceID);
+
+	quit_4: SDL_FreeWAV(wavBuffer);
 	
         /* Destroy renderer */
 	quit_3: SDL_DestroyRenderer( renderer );
