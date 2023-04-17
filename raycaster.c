@@ -153,7 +153,7 @@ static void createMap(uint8_t *mazegrid)
 			if (mazegrid[mazepos] == 2)
 			{
 				mazegrid[mazepos] = (rand() % 7) + 1; 
-				printf("O");
+				printf("\xe2\x96\x88");
 			}
 			else
 			{
