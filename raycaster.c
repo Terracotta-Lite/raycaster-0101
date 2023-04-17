@@ -206,13 +206,13 @@ int main( int argc, char *argv[] ) {
 	/* Variables */
 	uint8_t quit = 0;
 
-	int FOV = 60;
+	int FOV = 80;
 	int FPS = 0;
 	double planeX = atan(FOV/100.0);
 	double planeY = 1;
 
-	double playerX = 4;
-	double playerY = 4;
+	double playerX = (MAP_WIDTH - (MAP_WIDTH % 4))/2 + 0.5;
+	double playerY = (MAP_HEIGHT - (MAP_HEIGHT % 4))/2 + 0.5;
 	/*double playerAngle = PI/2;*/
 	double dirX = -1;
 	double dirY = 0;
@@ -348,7 +348,7 @@ int main( int argc, char *argv[] ) {
 			}
 			else
 			{
-				stepY = 1;
+				stepX = 1;
 				rayDistX = (mapX + 1.0 - playerX) * deltaDistX;
 			}
 			
@@ -417,7 +417,7 @@ int main( int argc, char *argv[] ) {
 		SDL_SetRenderDrawColor(renderer, 0, 255, 0, 0);
 		SDL_RenderDrawLine(renderer, 55, 55, 55 - dirX * 35, 55 - dirY * 35);
 
-		/*printf("%f, %f\n", playerX, playerY);*/
+		printf("%f, %f\n", playerX, playerY);
 
 		oldTime = time;
 		time = SDL_GetTicks64(); /* in milliseconds */
