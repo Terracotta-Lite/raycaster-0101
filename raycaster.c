@@ -20,10 +20,27 @@ will fix it */
 
 #define PI 3.1415926535897932384626433
 
+#define MUS_PATH "sound.wav"
+
+#define TRACK_NONE   0
+#define TRACK_JITTER 1
+#define TRACK_SWOOP  2
+#define TRACK_CREEP  3
+
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 
-double wavTimestamps[] = {0.0, 3.58, 5.38};
+/*
+  jitter: 630876
+  swoop:  317532
+  creep:  460132
+*/
+const int wavLength[] = {0, 630876, 948408, 1408540};
+
+/* variable declarations */
+static Uint8 *audio_pos; /* global pointer to the audio buffer to be played */
+static Uint32 audio_len; /* remaining length of the sample we have to play */
+static Uint8  audio_selected = TRACK_NONE;
 
 /*
 Log an SDL error with some error message to the output stream of our choice
@@ -56,6 +73,8 @@ SDL_Texture *loadTexture( const char *path )
 
 	return newTexture;
 }
+
+
 
 /* Arrange the N elements of ARRAY in random order.
    Ony effective if N is much smaller than RAND_MAX;
@@ -208,18 +227,26 @@ int main( int argc, char *argv[] ) {
 		goto quit_3;
 	}
 
-	Uint32 wavLength;
-	Uint8 *wavBuffer;
-	SDL_AudioSpec wavSpec;
-#define IS_LOAD_FAIL (SDL_LoadWAV("sound.wav", &wavSpec, &wavBuffer, &wavLength) == NULL)
-	if (IS_LOAD_FAIL)
+	// local variables
+	static Uint32 wav_length; // length of our sample
+	static Uint8 *wav_buffer; // buffer containing our audio file
+	static SDL_AudioSpec wav_spec; // the specs of our piece of music
+	
+	/* Load the WAV */
+	// the specs, length and buffer of our wav are filled
+	if (SDL_LoadWAV(MUS_PATH, &wav_spec, &wav_buffer, &wav_length) == NULL)
 	{
 		logSDLError("SDL_LoadWAV", SDL_GetError());
 		EXIT_CODE = 4;
 		goto quit_4;
 	}
 
-	SDL_AudioDeviceID deviceID = SDL_OpenAudioDevice(NULL, 0, &wavSpec, NULL, 0);
+	// set our global static variables
+	audio_pos = wav_buffer + 603876; // copy sound buffer
+	audio_len = wav_length - 1091008; // copy file length
+	
+	/* Open the audio device */
+	SDL_AudioDeviceID deviceID = SDL_OpenAudioDevice(NULL, 0, &wav_spec, NULL, 0);
 	if (deviceID == 0)
 	{
 		logSDLError("SDL_OpenAudioDevice", SDL_GetError());
@@ -227,8 +254,9 @@ int main( int argc, char *argv[] ) {
 		goto quit_5;
 	}
 
-	SDL_QueueAudio(deviceID, wavBuffer, wavLength);
-
+	SDL_QueueAudio(deviceID, audio_pos, audio_len);
+	
+	/* Start playing */
 	SDL_PauseAudioDevice(deviceID, 0);
 
 	createMap(map);
@@ -346,6 +374,16 @@ int main( int argc, char *argv[] ) {
 					planeX = planeX * rotcos - planeY * rotsin;
 					planeY = oldPlaneX * rotsin + planeY * rotcos;
 					break;
+
+					case SDLK_1:
+					if (SDL_GetQueuedAudioSize(deviceID) == 0)
+					{
+						audio_pos = wav_buffer + 603876; // copy sound buffer
+						audio_len = wav_length - 1091008; // copy file length
+						SDL_QueueAudio(deviceID, audio_pos, audio_len);
+					}
+					break;
+
 
 				}
 				break;
@@ -499,7 +537,7 @@ int main( int argc, char *argv[] ) {
 
 	quit_5: SDL_CloseAudioDevice(deviceID);
 
-	quit_4: SDL_FreeWAV(wavBuffer);
+	quit_4: SDL_FreeWAV(wav_buffer);
 	
         /* Destroy renderer */
 	quit_3: SDL_DestroyRenderer( renderer );
