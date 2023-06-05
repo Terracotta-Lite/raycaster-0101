@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define SCREEN_WIDTH 1000
-#define SCREEN_HEIGHT 600
+#define SCREEN_RATIO_WIDTH 5
+#define SCREEN_RATIO_HEIGHT 3
 
 /* Both must be odd numbers
 for some reason it doesnt
@@ -176,7 +176,7 @@ static void createMap(uint8_t *mazegrid)
 		{
 			int mazepos = j * MAP_HEIGHT + i;
 			if (mazegrid[mazepos] == 2)
-			{
+		{
 				mazegrid[mazepos] = (rand() % 7) + 1; 
 				printf("\xe2\x96\x88");
 			}
@@ -192,14 +192,15 @@ static void createMap(uint8_t *mazegrid)
 
 uint8_t map[MAP_WIDTH*MAP_HEIGHT];
 
-/* 1D zortbuffer, ordered by vertical slices */
-double distBuffer[SCREEN_WIDTH];
-
 void sortSprites(int *order, double *dist, int amount);
 
 int main( int argc, char *argv[] ) {
 	srand(time(NULL));
 	uint8_t EXIT_CODE = 0;
+	unsigned int RAW_SCREEN_WIDTH;
+	unsigned int RAW_SCREEN_HEIGHT;
+	unsigned int SCREEN_WIDTH;
+	unsigned int SCREEN_HEIGHT;
 
 	/* Initialize SDL */
 	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) != 0 )
@@ -210,7 +211,7 @@ int main( int argc, char *argv[] ) {
 	}
 	
 	/* Create Window */
-	SDL_Window *window = SDL_CreateWindow( "Raycaster", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE );
+	SDL_Window *window = SDL_CreateWindow( "Raycaster", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 240, SDL_WINDOW_RESIZABLE );
 	if ( window == NULL )
 	{
 		logSDLError( "SDL_CreateWindow", SDL_GetError() );
@@ -408,6 +409,18 @@ int main( int argc, char *argv[] ) {
 			}
 		}
 
+		SDL_GetWindowSize(window, &RAW_SCREEN_WIDTH, &RAW_SCREEN_HEIGHT);
+		if (RAW_SCREEN_WIDTH/SCREEN_RATIO_WIDTH <= RAW_SCREEN_HEIGHT/SCREEN_RATIO_HEIGHT)
+		{
+			SCREEN_WIDTH = RAW_SCREEN_WIDTH;
+			SCREEN_HEIGHT = SCREEN_WIDTH/SCREEN_RATIO_WIDTH*SCREEN_RATIO_HEIGHT;
+		}
+		else
+		{
+			SCREEN_HEIGHT = RAW_SCREEN_HEIGHT;
+			SCREEN_WIDTH = SCREEN_HEIGHT/SCREEN_RATIO_HEIGHT*SCREEN_RATIO_WIDTH;
+		}
+
 		/*playerAngle = fmod(playerAngle + 2*PI, 2*PI);*/
 
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
@@ -490,8 +503,6 @@ int main( int argc, char *argv[] ) {
 			{
 			ultimateDist = (rayDistY - deltaDistY);
 			}
-
-			distBuffer[x] = ultimateDist;
 
 			lineHeight = (int)(SCREEN_WIDTH / ultimateDist);
 			
