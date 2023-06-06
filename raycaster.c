@@ -1,3 +1,25 @@
+/*=============================================================================
+ |       Author:  KEREM EMRE GÜNER (Terracotta Lite)
+ |     Language:  C compiled with gcc 
+ |   To Compile:  run "make" in the directory
+ |
+ +-----------------------------------------------------------------------------
+ |
+ |  Description:  A simple raycaster game that randomly generates mazes
+ |      to use
+ |
+ |    Algorithm:  Raycaster by Lode Vandevenne and Recursize Backtracking
+ |      maze generator by Aryan Abed-Esfahani.
+ |
+ |   Required Features Not Included:  The program doesn't handle drawing
+ |      to the screen and uses SDL2 for that purpouse .
+ |
+ |   Known Bugs:  The maze is corrupted when the maze width and maze  
+ |      height aren't the same, though I will keep it because it looks
+ |      cool.
+ |
+ *===========================================================================*/
+
 #ifdef _WIN32
   	#include "SDL.h"
 #else
@@ -15,8 +37,8 @@
    For some reason it doesn't
    work when the numbers are not the same
    TODO: fix it */
-#define MAP_WIDTH 31
-#define MAP_HEIGHT 31
+#define MAP_WIDTH 101
+#define MAP_HEIGHT 101
 
 #define PI 3.1415926535897932384626433
 
@@ -41,17 +63,8 @@ static Uint8 *audio_pos;	/* global pointer to the audio buffer to be played */
 static Uint32 audio_len;	/* remaining length of the sample we have to play */
 static Uint8  audio_selected = TRACK_NONE;
 
-const double enemyCoords[] =
-{
-  2.5            , 2.5             ,
-  MAP_WIDTH - 2.5, 2.5             ,
-  2.5            , MAP_HEIGHT - 2.5,
-  MAP_WIDTH -2.5 , MAP_HEIGHT - 2.5
-};
-
 /* Log an SDL error with some error message to the output stream of our choice
-   @param msg The error message to write, format will be msg error: SDL_GetError()
-*/
+   @param msg The error message to write, format will be msg error: SDL_GetError() */
 void logSDLError( char *msg, const char *error ) {
 	printf( "%s error: %s\n", msg, error );
 }
@@ -266,11 +279,13 @@ int main( int argc, char *argv[] ) {
 	double	planeX = 0,
 		planeY = INIT_PLANEY,
 		playerX = INIT_PLAYERX,	/* initial player X coordinate */
-		playerY = INIT_PLAYERY,	/* initial player Y coorinate */
+		playerY = INIT_PLAYERY,	/* initial player Y coordinate */
 		dirX = -1,		/* initial player direction (cosine of the angle) */	
 		dirY = 0,		/* initial player direction (sine of the angle) */
-		movespeed = 0.0875,	/* initial move speed of player will change according to FPS */
-		rotspeed = 0.07,	/* initial rotation speed of player will change according to FPS */
+		movespeed = 0.0875,	/* initial player move speed will change according to FPS */
+		rotspeed = 0.07,	/* initial player rotation speed will change according to FPS */
+		monsterX = 2.5,		/* initial monster X coordinate */
+		monsterY = 2.5,		/* initial monster Y coordinate */
 		newX,			/* helper */
 		newY,			/* helper */
 		rotcos,			/* helper */
@@ -288,6 +303,7 @@ int main( int argc, char *argv[] ) {
 	}
 
 	long long unsigned int	time = 0,
+				lastTime = 0,
 				oldTime = 0,
 				frametime;
 
@@ -409,6 +425,8 @@ int main( int argc, char *argv[] ) {
 			}
 		}
 
+		/* ---- End of Input ---- */
+
 		SDL_GetWindowSize(window, &RAW_SCREEN_WIDTH, &RAW_SCREEN_HEIGHT);
 		if (RAW_SCREEN_WIDTH/SCREEN_RATIO_WIDTH <= RAW_SCREEN_HEIGHT/SCREEN_RATIO_HEIGHT)
 		{
@@ -424,7 +442,44 @@ int main( int argc, char *argv[] ) {
 		/* clear the renderer with black */
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 		SDL_RenderClear( renderer );
-		
+
+		/* move monster towards player */
+#define monsdirX (playerX-monsterX)
+#define monsdirY (playerY-monsterY)
+/*#define TRACK_NUMBER ((int)(3*x/MAP_WIDTH + 1))*/
+#define TRACK_NUMBER 2
+
+		double x = sqrt(monsdirX*monsdirX + monsdirY*monsdirY);
+
+		if (x<0.2) {
+			quit = 1;
+		}
+		else
+		{
+			monsterX += monsdirX*movespeed/x;
+			monsterY += monsdirY*movespeed/x;
+
+			//printf("%d, %f\n", TRACK_NUMBER, x);
+			/*printf("x:%f, y:%f\n", monsterX, monsterY);*/
+			printf("%f\n",x);
+
+			if (time - lastTime > x*100)
+			{
+				lastTime = time;
+				/*printf("beep");*/
+				audio_pos = wav_buffer + wavLength[TRACK_NUMBER];	/* scroll to the track */
+				audio_len = wav_length - wavLength[4-TRACK_NUMBER];	/* scroll to the track */
+				/* play the audio */
+				SDL_ClearQueuedAudio(deviceID);
+				SDL_QueueAudio(deviceID, audio_pos, audio_len);
+			}
+		}
+			
+#undef TRACK_NUMBER
+#undef monsdirX
+#undef monsdirY
+
+		/* --- Raycast --- */
 		for (int x = 0; x < SCREEN_WIDTH; x++)
 		{
 			double	cameraX = 2 * x / (double)SCREEN_WIDTH - 1,
@@ -443,8 +498,7 @@ int main( int argc, char *argv[] ) {
 				side;
 			int8_t	stepX,			/* the direection the ray moves in the map, either 1 or -1 */
 				stepY;			/* the direection the ray moves in the map, either 1 or -1 */
-			
-			
+
 			if (helper_cos < 0)
 			{
 				stepX = -1;
