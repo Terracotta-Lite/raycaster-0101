@@ -11,10 +11,10 @@
 #define SCREEN_RATIO_WIDTH 5
 #define SCREEN_RATIO_HEIGHT 3
 
-/* Both must be odd numbers
-for some reason it doesnt
-work when the numbers are not the same
-will fix it */
+/* Both must be odd numbers.
+   For some reason it doesn't
+   work when the numbers are not the same
+   TODO: fix it */
 #define MAP_WIDTH 31
 #define MAP_HEIGHT 31
 
@@ -35,51 +35,33 @@ SDL_Renderer *renderer = NULL;
   swoop:  317532
   creep:  460132
 */
-const int wavLength[] = {0, 630876, 948408, 1408540};
+const int wavLength[] = {0, 630876, 948408, 1408540};	/* lengths of the audio sections contained inside the main audio file */
 
-/* variable declarations */
-static Uint8 *audio_pos; /* global pointer to the audio buffer to be played */
-static Uint32 audio_len; /* remaining length of the sample we have to play */
+static Uint8 *audio_pos;	/* global pointer to the audio buffer to be played */
+static Uint32 audio_len;	/* remaining length of the sample we have to play */
 static Uint8  audio_selected = TRACK_NONE;
 
-/*
-Log an SDL error with some error message to the output stream of our choice
-@param msg The error message to write, format will be msg error: SDL_GetError()
+const double enemyCoords[] =
+{
+  2.5            , 2.5             ,
+  MAP_WIDTH - 2.5, 2.5             ,
+  2.5            , MAP_HEIGHT - 2.5,
+  MAP_WIDTH -2.5 , MAP_HEIGHT - 2.5
+};
+
+/* Log an SDL error with some error message to the output stream of our choice
+   @param msg The error message to write, format will be msg error: SDL_GetError()
 */
 void logSDLError( char *msg, const char *error ) {
 	printf( "%s error: %s\n", msg, error );
 }
 
-SDL_Texture *loadTexture( const char *path )
-{
-	SDL_Texture *newTexture = NULL;
-	
-	SDL_Surface *loadedSurface = SDL_LoadBMP(path);
-
-	if (loadedSurface == NULL)
-	{
-		logSDLError("SDL_LoadBMP", SDL_GetError());
-	}
-	else
-	{
-		newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
-		if (newTexture == NULL)
-		{
-			logSDLError("SDL_CreateTextureFromSurface", SDL_GetError());
-		}
-
-		SDL_FreeSurface(loadedSurface);
-	}
-
-	return newTexture;
-}
-
-
-
 /* Arrange the N elements of ARRAY in random order.
    Ony effective if N is much smaller than RAND_MAX;
    if this may not be the case, use a better random
-   number generator. */
+   number generator.
+   @param array The array to shuffle.
+   @param n The number of elements in the array */
 static void shuffle(int *array, size_t n)
 {
   if (n > 1) 
@@ -95,6 +77,11 @@ static void shuffle(int *array, size_t n)
   }
 }
 
+/* Self-call itself to randomly generate a maze. 
+   Picks a direction and calls itself in that direction.
+   @param x The X coordinate of the starting point for building the maze
+   @param y The Y coordinate of the starting point for building the maze
+   @param mazegrid The array containing the maze */
 static void MAZE_Recurse(int x, int y, uint8_t *mazegrid)
 {
 	int x_1, x_2, y_1, y_2;
@@ -151,6 +138,8 @@ static void MAZE_Recurse(int x, int y, uint8_t *mazegrid)
 	}
 }
 
+/* Calls the MAZE_RECURSE function appropraitely to create a maze.
+   @param mazegrid The array to put the maze in */
 static void createMap(uint8_t *mazegrid)
 {
 	for (int i = 0; i < MAP_WIDTH; i++)
@@ -190,18 +179,20 @@ static void createMap(uint8_t *mazegrid)
 	}
 }
 
-uint8_t map[MAP_WIDTH*MAP_HEIGHT];
+uint8_t map[MAP_WIDTH*MAP_HEIGHT]; /* our map (or maze) */
 
-void sortSprites(int *order, double *dist, int amount);
 
 int main( int argc, char *argv[] ) {
-	srand(time(NULL));
-	uint8_t EXIT_CODE = 0;
-	unsigned int RAW_SCREEN_WIDTH;
-	unsigned int RAW_SCREEN_HEIGHT;
-	unsigned int SCREEN_WIDTH;
-	unsigned int SCREEN_HEIGHT;
 
+	/* ----- INITIALIZE EVERYTHING ----- */
+	
+	srand(time(NULL));
+	uint8_t EXIT_CODE = 0;		/* the ezit code will be changed if a problem occurs */
+	int	RAW_SCREEN_WIDTH,	/* for the calculation of SCREEN_WIDTH and SCREEN_HEIGHT */
+		RAW_SCREEN_HEIGHT,	/* for the calculation of SCREEN_WIDTH and SCREEN_HEIGHT */
+		SCREEN_WIDTH,
+		SCREEN_HEIGHT;
+			
 	/* Initialize SDL */
 	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) != 0 )
 	{
@@ -229,9 +220,9 @@ int main( int argc, char *argv[] ) {
 	}
 
 	// local variables
-	static Uint32 wav_length; // length of our sample
-	static Uint8 *wav_buffer; // buffer containing our audio file
-	static SDL_AudioSpec wav_spec; // the specs of our piece of music
+	static Uint32 wav_length;	/*  length of our sample */
+	static Uint8 *wav_buffer;	/*  buffer containing our audio file */
+	static SDL_AudioSpec wav_spec;	/* the specs of our piece of music */
 	
 	/* Load the WAV */
 	// the specs, length and buffer of our wav are filled
@@ -262,41 +253,47 @@ int main( int argc, char *argv[] ) {
 
 	createMap(map);
 
-	/* Game Code */
+#define INIT_PLANEY (atan(FOV/100.0))
+#define INIT_PLAYERX ((MAP_WIDTH - (MAP_WIDTH % 4))/2 + 0.5)
+#define INIT_PLAYERY ((MAP_HEIGHT - (MAP_HEIGHT % 4))/2 + 0.5)
 
 	/* Variables */
-	uint8_t quit = 0;
+	uint8_t quit = 0;			/* either 1 or 0 if we should quit or shouldn't */
+	int	FOV = 80,
+		FPS = 0;
+	double	planeX = 0,
+		planeY = INIT_PLANEY,
+		playerX = INIT_PLAYERX,	/* initial player X coordinate */
+		playerY = INIT_PLAYERY,	/* initial player Y coorinate */
+		dirX = -1,		/* initial player direction (cosine of the angle) */	
+		dirY = 0,		/* initial player direction (sine of the angle) */
+		movespeed = 0.0875,	/* initial move speed of player will change according to FPS */
+		rotspeed = 0.07,	/* initial rotation speed of player will change according to FPS */
+		newX,			/* helper */
+		newY,			/* helper */
+		rotcos,			/* helper */
+		rotsin,			/* helper */
+		oldDirX,		/* helper */
+		oldPlaneX;		/* helper */
 
-	int FOV = 80;
-	int FPS = 0;
-	double planeX = 0;
-	double planeY = atan(FOV/100.0);
-
-	double playerX = (MAP_WIDTH - (MAP_WIDTH % 4))/2 + 0.5;
-	double playerY = (MAP_HEIGHT - (MAP_HEIGHT % 4))/2 + 0.5;
-	
-	double dirX = -1;
-	double dirY = 0;
-	double movespeed = 0.0875, rotspeed = 0.07;
-
-	double newX;
-	double newY;
-	double rotcos;
-	double rotsin;
-	double oldDirX;
-	double oldPlaneX;
+#undef INIT_PLANEY
+#undef INIT_PLAYERX
+#undef INIT_PLAYERY
 
 	if (argc > 1)
 	{
 	FPS = atoi(argv[1]);
 	}
 
-	long long unsigned int time = 0;
-	long long unsigned int oldTime = 0;
-	long long unsigned int frametime;
+	long long unsigned int	time = 0,
+				oldTime = 0,
+				frametime;
 
+	/* capture the mouse */
 	SDL_CaptureMouse(SDL_TRUE);
 	SDL_ShowCursor(SDL_DISABLE);
+
+	/* ----- MAIN LOOP ----- */
 	
 	SDL_Event e;
 	while ( quit == 0 ) {
@@ -510,6 +507,16 @@ int main( int argc, char *argv[] ) {
 #define DRAW_Y2 (lineHeight / 2 + SCREEN_HEIGHT / 2 < SCREEN_HEIGHT) ? lineHeight / 2 + SCREEN_HEIGHT / 2 : SCREEN_HEIGHT - 1
 
 			SDL_SetRenderDrawColor(renderer, (map[mapPos] & 4)*63, (map[mapPos] & 2)*63, (map[mapPos] & 1)*63, 0);
+			SDL_RenderDrawLine(renderer, x, DRAW_Y1, x, DRAW_Y2); 
+
+#undef DRAW_Y1
+#undef DRAW_Y2
+
+#define DRAW_Y1 (-lineHeight / 20 + SCREEN_HEIGHT / 2 < 0) ? 0 : -lineHeight / 20 + SCREEN_HEIGHT / 2
+#define DRAW_Y2 (lineHeight / 20 + SCREEN_HEIGHT / 2 < SCREEN_HEIGHT) ? lineHeight / 20 + SCREEN_HEIGHT / 2 : SCREEN_HEIGHT - 1
+
+			
+			SDL_SetRenderDrawColor(renderer, 60, 60, 60, 0);
 			SDL_RenderDrawLine(renderer, x, DRAW_Y1, x, DRAW_Y2); 
 
 #undef DRAW_Y1
