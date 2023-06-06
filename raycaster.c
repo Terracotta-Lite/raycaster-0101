@@ -187,7 +187,7 @@ int main( int argc, char *argv[] ) {
 	/* ----- INITIALIZE EVERYTHING ----- */
 	
 	srand(time(NULL));
-	uint8_t EXIT_CODE = 0;		/* the ezit code will be changed if a problem occurs */
+	uint8_t EXIT_CODE = 0;		/* the exit code will be changed if a problem occurs */
 	int	RAW_SCREEN_WIDTH,	/* for the calculation of SCREEN_WIDTH and SCREEN_HEIGHT */
 		RAW_SCREEN_HEIGHT,	/* for the calculation of SCREEN_WIDTH and SCREEN_HEIGHT */
 		SCREEN_WIDTH,
@@ -219,13 +219,13 @@ int main( int argc, char *argv[] ) {
 		goto quit_3;
 	}
 
-	// local variables
+	/* local variables */
 	static Uint32 wav_length;	/*  length of our sample */
 	static Uint8 *wav_buffer;	/*  buffer containing our audio file */
 	static SDL_AudioSpec wav_spec;	/* the specs of our piece of music */
 	
-	/* Load the WAV */
-	// the specs, length and buffer of our wav are filled
+	/* load the WAV (audio) */
+	/* the specs, length and buffer of our wav are filled */
 	if (SDL_LoadWAV(MUS_PATH, &wav_spec, &wav_buffer, &wav_length) == NULL)
 	{
 		logSDLError("SDL_LoadWAV", SDL_GetError());
@@ -233,9 +233,9 @@ int main( int argc, char *argv[] ) {
 		goto quit_4;
 	}
 
-	// set our global static variables
-	audio_pos = wav_buffer + 603876; // copy sound buffer
-	audio_len = wav_length - 1091008; // copy file length
+	/* set our global static variables */
+	audio_pos = wav_buffer + 603876;	/* copy sound buffer and scroll to the wanted track */
+	audio_len = wav_length - 1091008;	/* copy file length and scroll to the wanted track */
 	
 	/* Open the audio device */
 	SDL_AudioDeviceID deviceID = SDL_OpenAudioDevice(NULL, 0, &wav_spec, NULL, 0);
@@ -246,11 +246,13 @@ int main( int argc, char *argv[] ) {
 		goto quit_5;
 	}
 
+	/* queue the first track */
 	SDL_QueueAudio(deviceID, audio_pos, audio_len);
 	
-	/* Start playing */
+	/* start playing the audio */
 	SDL_PauseAudioDevice(deviceID, 0);
 
+	/* create the map (maze) */
 	createMap(map);
 
 #define INIT_PLANEY (atan(FOV/100.0))
@@ -258,7 +260,7 @@ int main( int argc, char *argv[] ) {
 #define INIT_PLAYERY ((MAP_HEIGHT - (MAP_HEIGHT % 4))/2 + 0.5)
 
 	/* Variables */
-	uint8_t quit = 0;			/* either 1 or 0 if we should quit or shouldn't */
+	uint8_t quit = 0;		/* either 1 or 0 indicating if we should quit or shouldn't */
 	int	FOV = 80,
 		FPS = 0;
 	double	planeX = 0,
@@ -306,7 +308,7 @@ int main( int argc, char *argv[] ) {
 				case SDL_KEYDOWN:
 				switch ( e.key.keysym.sym ) {
 
-					/* Mission Critical */
+					/* -- Mission Critical -- */
 
 					/* Q (for quit) */
 					case SDLK_q:
@@ -376,8 +378,9 @@ int main( int argc, char *argv[] ) {
 					case SDLK_1:
 					if (SDL_GetQueuedAudioSize(deviceID) == 0)
 					{
-						audio_pos = wav_buffer + 603876; // copy sound buffer
-						audio_len = wav_length - 1091008; // copy file length
+						audio_pos = wav_buffer + 603876;	/* scroll to the track */
+						audio_len = wav_length - 1091008;	/* scroll to the track */
+						/* play the audio */
 						SDL_QueueAudio(deviceID, audio_pos, audio_len);
 					}
 					break;
@@ -417,38 +420,30 @@ int main( int argc, char *argv[] ) {
 			SCREEN_HEIGHT = RAW_SCREEN_HEIGHT;
 			SCREEN_WIDTH = SCREEN_HEIGHT/SCREEN_RATIO_HEIGHT*SCREEN_RATIO_WIDTH;
 		}
-
-		/*playerAngle = fmod(playerAngle + 2*PI, 2*PI);*/
-
+		
+		/* clear the renderer with black */
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-
-		/* Clear the renderer */
 		SDL_RenderClear( renderer );
-
+		
 		for (int x = 0; x < SCREEN_WIDTH; x++)
 		{
-			/*double rayangle = playerAngle - PI*FOV/360 + (PI*FOV*x)/(SCREEN_WIDTH*180);*/
-			double cameraX = 2 * x / (double)SCREEN_WIDTH - 1;
-			double helper_cos = dirX + planeX * cameraX;
-			double helper_sin = dirY + planeY * cameraX;
-
-			int mapX = (int)(playerX);
-			int mapY = (int)(playerY);
-			int mapPos;
-
-			double rayDistX;
-			double rayDistY;
-
-			double deltaDistX = (helper_cos == 0) ? 1e30 : fabs(1 / helper_cos);
-			double deltaDistY = (helper_sin == 0) ? 1e30 : fabs(1 / helper_sin);
-			double ultimateDist;
-			int lineHeight;
-
-			int8_t stepX;
-			int8_t stepY;
+			double	cameraX = 2 * x / (double)SCREEN_WIDTH - 1,
+				helper_cos = dirX + planeX * cameraX,
+				helper_sin = dirY + planeY * cameraX,
+				rayDistX,
+				rayDistY,
+				deltaDistX = (helper_cos == 0) ? 1e30 : fabs(1 / helper_cos),
+				deltaDistY = (helper_sin == 0) ? 1e30 : fabs(1 / helper_sin),
+				ultimateDist;
+			int	mapX = (int)(playerX),	/* x coordinate of the cell we are at */
+				mapY = (int)(playerY),	/* y coordinate of the cell we are at */
+				mapPos,			/* the location of the cell in the array (helper) */
+				lineHeight,		/* the height of the line to draw (helper) */
+				hit = 0,
+				side;
+			int8_t	stepX,			/* the direection the ray moves in the map, either 1 or -1 */
+				stepY;			/* the direection the ray moves in the map, either 1 or -1 */
 			
-			int hit = 0;
-			int side;
 			
 			if (helper_cos < 0)
 			{
@@ -515,9 +510,12 @@ int main( int argc, char *argv[] ) {
 #define DRAW_Y1 (-lineHeight / 20 + SCREEN_HEIGHT / 2 < 0) ? 0 : -lineHeight / 20 + SCREEN_HEIGHT / 2
 #define DRAW_Y2 (lineHeight / 20 + SCREEN_HEIGHT / 2 < SCREEN_HEIGHT) ? lineHeight / 20 + SCREEN_HEIGHT / 2 : SCREEN_HEIGHT - 1
 
-			
-			SDL_SetRenderDrawColor(renderer, 60, 60, 60, 0);
-			SDL_RenderDrawLine(renderer, x, DRAW_Y1, x, DRAW_Y2); 
+			/* TODO: make this only run when there is an enemy in view and make it look like a filled circle */			
+			if (0)
+			{
+				SDL_SetRenderDrawColor(renderer, 60, 60, 60, 0);
+				SDL_RenderDrawLine(renderer, x, DRAW_Y1, x, DRAW_Y2); 
+			}
 
 #undef DRAW_Y1
 #undef DRAW_Y2
@@ -534,8 +532,6 @@ int main( int argc, char *argv[] ) {
 		SDL_SetRenderDrawColor(renderer, 0, 255, 0, 0);
 		SDL_RenderDrawLine(renderer, 55, 55, 55 - dirX * 35, 55 - dirY * 35);
 
-		/*printf("%f, %f\n", playerX, playerY);*/
-
 		oldTime = time;
 		time = SDL_GetTicks64(); /* in milliseconds */
 
@@ -544,10 +540,10 @@ int main( int argc, char *argv[] ) {
 		movespeed = frametime / 400.0; /* in squares/second */
 		rotspeed = frametime / 250.0; /* in radians/second */
 		 
-		/* Update the screen */
+		/* update the screen */
 		SDL_RenderPresent( renderer );
 
-		/* Take a quick break after all that hard work */
+		/* take a quick break after all that hard work */
 		if (FPS) { SDL_Delay( (int)(1000/FPS) ); }
 		else     { SDL_Delay( 1               ); }
 
@@ -557,15 +553,15 @@ int main( int argc, char *argv[] ) {
 
 	quit_4: SDL_FreeWAV(wav_buffer);
 	
-        /* Destroy renderer */
+        /* destroy renderer */
 	quit_3: SDL_DestroyRenderer( renderer );
 	renderer = NULL;
 
-	/* Destroy window */
+	/* destroy window */
 	quit_2: SDL_DestroyWindow( window );
 	window = NULL;
 
-	/* Quit SDL subsystems */
+	/* quit SDL subsystems */
 	quit_1: SDL_Quit();
 	return EXIT_CODE;
 }
