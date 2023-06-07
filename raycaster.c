@@ -194,7 +194,6 @@ static void createMap(uint8_t *mazegrid)
 
 uint8_t map[MAP_WIDTH*MAP_HEIGHT]; /* our map (or maze) */
 
-
 int main( int argc, char *argv[] ) {
 
 	/* ----- INITIALIZE EVERYTHING ----- */
@@ -268,13 +267,13 @@ int main( int argc, char *argv[] ) {
 	/* create the map (maze) */
 	createMap(map);
 
-#define INIT_PLANEY (atan(FOV/100.0))
+#define INIT_PLANEY (tan(FOV / 2))
 #define INIT_PLAYERX ((MAP_WIDTH - (MAP_WIDTH % 4))/2 + 0.5)
 #define INIT_PLAYERY ((MAP_HEIGHT - (MAP_HEIGHT % 4))/2 + 0.5)
 
 	/* Variables */
 	uint8_t quit = 0;		/* either 1 or 0 indicating if we should quit or shouldn't */
-	int	FOV = 80,
+	int	FOV = 850,
 		FPS = 0;
 	double	planeX = 0,
 		planeY = INIT_PLANEY,
@@ -305,6 +304,7 @@ int main( int argc, char *argv[] ) {
 	long long unsigned int	time = 0,
 				lastTime = 0,
 				oldTime = 0,
+				section1,
 				frametime;
 
 	/* capture the mouse */
@@ -315,6 +315,9 @@ int main( int argc, char *argv[] ) {
 	
 	SDL_Event e;
 	while ( quit == 0 ) {
+	
+		section1 = SDL_GetTicks64();
+
 		while ( SDL_PollEvent(&e) ) {
 			switch ( e.type ) {
 				case SDL_QUIT:
@@ -425,6 +428,9 @@ int main( int argc, char *argv[] ) {
 			}
 		}
 
+		printf("INPUT: %lld\n", SDL_GetTicks64() - section1);
+		section1 = SDL_GetTicks64();
+
 		/* ---- End of Input ---- */
 
 		SDL_GetWindowSize(window, &RAW_SCREEN_WIDTH, &RAW_SCREEN_HEIGHT);
@@ -438,46 +444,11 @@ int main( int argc, char *argv[] ) {
 			SCREEN_HEIGHT = RAW_SCREEN_HEIGHT;
 			SCREEN_WIDTH = SCREEN_HEIGHT/SCREEN_RATIO_HEIGHT*SCREEN_RATIO_WIDTH;
 		}
-		
+
 		/* clear the renderer with black */
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 		SDL_RenderClear( renderer );
 
-		/* move monster towards player */
-#define monsdirX (playerX-monsterX)
-#define monsdirY (playerY-monsterY)
-/*#define TRACK_NUMBER ((int)(3*x/MAP_WIDTH + 1))*/
-#define TRACK_NUMBER 2
-
-		double x = sqrt(monsdirX*monsdirX + monsdirY*monsdirY);
-
-		if (x<0.2) {
-			quit = 1;
-		}
-		else
-		{
-			monsterX += monsdirX*movespeed/x;
-			monsterY += monsdirY*movespeed/x;
-
-			//printf("%d, %f\n", TRACK_NUMBER, x);
-			/*printf("x:%f, y:%f\n", monsterX, monsterY);*/
-			printf("%f\n",x);
-
-			if (time - lastTime > x*100)
-			{
-				lastTime = time;
-				/*printf("beep");*/
-				audio_pos = wav_buffer + wavLength[TRACK_NUMBER];	/* scroll to the track */
-				audio_len = wav_length - wavLength[4-TRACK_NUMBER];	/* scroll to the track */
-				/* play the audio */
-				SDL_ClearQueuedAudio(deviceID);
-				SDL_QueueAudio(deviceID, audio_pos, audio_len);
-			}
-		}
-			
-#undef TRACK_NUMBER
-#undef monsdirX
-#undef monsdirY
 
 		/* --- Raycast --- */
 		for (int x = 0; x < SCREEN_WIDTH; x++)
@@ -576,15 +547,98 @@ int main( int argc, char *argv[] ) {
 
 		}
 
-		SDL_Rect plane;
-		plane.x = 20;
-		plane.y = 20;
-		plane.w = 70;
-		plane.h = 70;
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-		SDL_RenderFillRect(renderer, &plane);
-		SDL_SetRenderDrawColor(renderer, 0, 255, 0, 0);
-		SDL_RenderDrawLine(renderer, 55, 55, 55 - dirX * 35, 55 - dirY * 35);
+		printf("RAYCAST: %lld\n", SDL_GetTicks64() - section1);
+		section1 = SDL_GetTicks64();
+		
+		/* --- Monster --- */
+		
+#define monsdirX (playerX-monsterX)
+#define monsdirY (playerY-monsterY)
+/*#define TRACK_NUMBER ((int)(3*x/MAP_WIDTH + 1))*/
+#define TRACK_NUMBER 2
+
+		double x = sqrt(monsdirX*monsdirX + monsdirY*monsdirY);
+
+		if (x<1) {
+			quit = 1;
+		}
+		else
+		{
+			monsterX += monsdirX*movespeed/x;
+			monsterY += monsdirY*movespeed/x;
+
+			if (time - lastTime > x*100)
+			{
+				lastTime = time;
+				/*printf("beep");*/
+				audio_pos = wav_buffer + wavLength[TRACK_NUMBER];	/* scroll to the track */
+				audio_len = wav_length - wavLength[4-TRACK_NUMBER];	/* scroll to the track */
+				/* play the audio */
+				SDL_ClearQueuedAudio(deviceID);
+				SDL_QueueAudio(deviceID, audio_pos, audio_len);
+			}
+		}
+
+#undef TRACK_NUMBER
+#undef monsdirX
+#undef monsdirY
+
+		/*
+		double invDet = 1.0 / (planeX * dirY - dirX * planeY);
+		
+#define monsdiffX (monsterX - playerX)
+#define monsdiffY (monsterY - playerY)
+
+		double transformX = invDet * (dirY * monsdiffX - dirX * monsdiffY);
+		double transformY = invDet * (-planeY * monsdiffX + planeX * monsdiffY);
+
+#undef monsdiffX
+#undef monsdiffY
+
+		int spriteScreenX = (int)((SCREEN_WIDTH / 2) * (1 + transformX / transformY));
+
+		int spriteHeight = abs((int)(SCREEN_HEIGHT / transformY));
+
+		int drawStartY = SCREEN_HEIGHT / 2 - spriteHeight / 2;
+		if (drawStartY < 0) drawStartY = 0;
+		int drawEndY   = SCREEN_HEIGHT / 2 + spriteHeight / 2;
+		if (drawEndY  >= SCREEN_HEIGHT) drawEndY = SCREEN_HEIGHT - 1;
+		
+		int spriteWidth = abs((int)(SCREEN_HEIGHT / (transformY)));
+
+		int drawStartX = spriteScreenX - spriteWidth / 2;
+		if (drawStartX < 0) drawStartX = 0;
+		int drawEndX   = spriteScreenX + spriteWidth / 2;
+		if (drawEndX  >= SCREEN_HEIGHT) drawEndX = SCREEN_WIDTH - 1;
+
+		if (transformY > 0)
+		for (int x = 0; x < spriteWidth; x++)
+		{
+			if (drawStartX + x > 0 && drawStartX + x < SCREEN_WIDTH)
+			for (int y = 0; y < spriteHeight; y++)
+			{
+				int dx = spriteWidth / 2 - x;
+				int dy = spriteHeight / 2 - y;
+				if ((dx*dx + dy*dy) > (spriteWidth*spriteHeight/4))
+				{
+				SDL_SetRenderDrawColor(renderer, 5, 10, 5, 0);
+				}
+				else
+				{
+				SDL_SetRenderDrawColor(renderer,
+				(int)((double)(x*y)/spriteWidth * spriteHeight * 255),
+				(int)((double)(x*x)/spriteWidth * spriteWidth * 255),
+				(int)((double)(y*y)/spriteHeight * spriteHeight * 255), 0);
+				}
+
+				
+				SDL_RenderDrawPoint(renderer,  drawStartX + dx, drawStartY + dy);
+			}
+		}
+		*/
+
+		printf("MONSTER: %lld\n", SDL_GetTicks64() - section1);
+		section1 = SDL_GetTicks64();
 
 		oldTime = time;
 		time = SDL_GetTicks64(); /* in milliseconds */
@@ -596,9 +650,11 @@ int main( int argc, char *argv[] ) {
 		 
 		/* update the screen */
 		SDL_RenderPresent( renderer );
+		
+		printf("RENDER: %lld\n", SDL_GetTicks64() - section1);
 
 		/* take a quick break after all that hard work */
-		if (FPS) { SDL_Delay( (int)(1000/FPS) ); }
+		if (FPS) { if (1000/FPS - frametime > 0) SDL_Delay( (int)(1000/FPS - frametime)); }
 		else     { SDL_Delay( 1               ); }
 
 	}
