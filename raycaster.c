@@ -20,6 +20,8 @@
  |
  *===========================================================================*/
 
+#include "config.h"
+
 #ifdef _WIN32
   	#include "SDL.h"
 #else
@@ -414,6 +416,9 @@ int main( int argc, char *argv[] ) {
 				break;
 
 				case SDL_MOUSEMOTION:
+				int m;
+				SDL_GetMouseState(NULL, &m);
+				SDL_WarpMouseInWindow(window, SCREEN_WIDTH/2, m);
 				rotcos = cos(rotspeed * e.motion.xrel / -7.0);
 				rotsin = sin(rotspeed * e.motion.xrel / -7.0);
 				oldDirX = dirX;
@@ -428,8 +433,10 @@ int main( int argc, char *argv[] ) {
 			}
 		}
 
+#if DEBUG
 		printf("INPUT: %lld\n", SDL_GetTicks64() - section1);
 		section1 = SDL_GetTicks64();
+#endif
 
 		/* ---- End of Input ---- */
 
@@ -547,8 +554,10 @@ int main( int argc, char *argv[] ) {
 
 		}
 
+#if DEBUG
 		printf("RAYCAST: %lld\n", SDL_GetTicks64() - section1);
 		section1 = SDL_GetTicks64();
+#endif
 		
 		/* --- Monster --- */
 		
@@ -560,7 +569,11 @@ int main( int argc, char *argv[] ) {
 		double x = sqrt(monsdirX*monsdirX + monsdirY*monsdirY);
 
 		if (x<1) {
+#if DEBUG
+			quit = 0;
+#else
 			quit = 1;
+#endif
 		}
 		else
 		{
@@ -570,7 +583,6 @@ int main( int argc, char *argv[] ) {
 			if (time - lastTime > x*100)
 			{
 				lastTime = time;
-				/*printf("beep");*/
 				audio_pos = wav_buffer + wavLength[TRACK_NUMBER];	/* scroll to the track */
 				audio_len = wav_length - wavLength[4-TRACK_NUMBER];	/* scroll to the track */
 				/* play the audio */
@@ -583,7 +595,6 @@ int main( int argc, char *argv[] ) {
 #undef monsdirX
 #undef monsdirY
 
-		/*
 		double invDet = 1.0 / (planeX * dirY - dirX * planeY);
 		
 #define monsdiffX (monsterX - playerX)
@@ -615,30 +626,48 @@ int main( int argc, char *argv[] ) {
 		for (int x = 0; x < spriteWidth; x++)
 		{
 			if (drawStartX + x > 0 && drawStartX + x < SCREEN_WIDTH)
-			for (int y = 0; y < spriteHeight; y++)
 			{
-				int dx = spriteWidth / 2 - x;
-				int dy = spriteHeight / 2 - y;
-				if ((dx*dx + dy*dy) > (spriteWidth*spriteHeight/4))
-				{
-				SDL_SetRenderDrawColor(renderer, 5, 10, 5, 0);
-				}
-				else
-				{
+#if GRAPHICS==PATATO
 				SDL_SetRenderDrawColor(renderer,
-				(int)((double)(x*y)/spriteWidth * spriteHeight * 255),
-				(int)((double)(x*x)/spriteWidth * spriteWidth * 255),
-				(int)((double)(y*y)/spriteHeight * spriteHeight * 255), 0);
-				}
-
-				
-				SDL_RenderDrawPoint(renderer,  drawStartX + dx, drawStartY + dy);
+				(int)((double)(x)/spriteWidth*255),
+				255-(int)((double)(x)/spriteWidth*255),
+				abs(128-(int)((double)(x)/spriteWidth*255)), 0);
+				SDL_RenderDrawLine(renderer, drawStartX + x, drawStartY, drawStartX + x, drawEndY);
 			}
-		}
-		*/
+#else
+				for (int y = 0; y < spriteHeight; y++)
+				{
+					int dx = spriteWidth / 2 - x;
+					int dy = spriteHeight / 2 - y;
+					if ((dx*dx + dy*dy) > (spriteWidth*spriteHeight/4))
+					{
+					SDL_SetRenderDrawColor(renderer, 5, 10, 5, 0);
+					}
+					else
+					{
+					SDL_SetRenderDrawColor(renderer,
+#if GRAPHICS==CRAZY
+					(int)((double)(x*y)/spriteWidth * spriteHeight * 255),
+					(int)((double)(x*x)/spriteWidth * spriteWidth * 255),
+					(int)((double)(y*y)/spriteHeight * spriteHeight * 255), 0);
+#else
+					(int)((double)(x)/spriteWidth * 255),
+					(int)((double)255),
+					(int)((double)(y)/spriteHeight * 255), 0);
+#endif
+					}
 
+					
+					SDL_RenderDrawPoint(renderer,  drawStartX + dx, drawStartY + dy);
+				}
+			}
+#endif
+		}
+
+#if DEBUG
 		printf("MONSTER: %lld\n", SDL_GetTicks64() - section1);
 		section1 = SDL_GetTicks64();
+#endif
 
 		oldTime = time;
 		time = SDL_GetTicks64(); /* in milliseconds */
@@ -650,8 +679,10 @@ int main( int argc, char *argv[] ) {
 		 
 		/* update the screen */
 		SDL_RenderPresent( renderer );
-		
+
+#if DEBUG
 		printf("RENDER: %lld\n", SDL_GetTicks64() - section1);
+#endif
 
 		/* take a quick break after all that hard work */
 		if (FPS) { if (1000/FPS - frametime > 0) SDL_Delay( (int)(1000/FPS - frametime)); }
