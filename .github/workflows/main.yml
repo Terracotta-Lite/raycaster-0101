@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: build-windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@main
+        with:
+          submodules: 'recursive'
+
+      - name: Download SDL2
+        run: curl https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-devel-2.26.5-mingw.zip --output SDL2.zip
+
+      - name: Unzip SDL2
+        run: 7z x SDL2.zip
+
+      - name: Install
+        shell: cmd
+        run: i686-w64-mingw32-gcc raycaster.c -IC:.\SDL2-2.26.5\include\SDL2 -LC:\SDL-2.26.5\lib -w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2 -o raycaster.exe
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@main
+        with:
+          name: raycaster.exe
+          path: "D:/UltimMC"
