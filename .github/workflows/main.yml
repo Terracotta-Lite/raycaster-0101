@@ -25,7 +25,7 @@ jobs:
 
       - name: Install
         shell: cmd
-        run: i686-w64-mingw32-gcc raycaster.c -IC:.\SDL2-2.26.5\include\SDL2 -LC:\SDL-2.26.5\lib -w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2 -o raycaster.exe
+        run: gcc raycaster.c -IC:.\SDL2-2.26.5\x86_64-w64-mingw32\include\SDL2 -LC:\SDL-2.26.5\x86_64-w64-mingw32\lib -w -Wl,-subsystem,windows -lmingw32 -lSDL2main -lSDL2 -o raycaster.exe
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@main
