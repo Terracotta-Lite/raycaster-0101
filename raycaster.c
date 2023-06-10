@@ -276,6 +276,7 @@ int main( int argc, char *argv[] ) {
 	/* Variables */
 	uint8_t quit = 0;		/* either 1 or 0 indicating if we should quit or shouldn't */
 	int	FOV = 850,
+		m,
 		FPS = 0;
 	double	planeX = 0,
 		planeY = INIT_PLANEY,
@@ -416,7 +417,6 @@ int main( int argc, char *argv[] ) {
 				break;
 
 				case SDL_MOUSEMOTION:
-				int m;
 				SDL_GetMouseState(NULL, &m);
 				SDL_WarpMouseInWindow(window, SCREEN_WIDTH/2, m);
 				rotcos = cos(rotspeed * e.motion.xrel / -7.0);
