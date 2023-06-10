@@ -18,7 +18,7 @@ jobs:
           submodules: 'recursive'
 
       - name: Download SDL2
-        run: curl https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-devel-2.26.5-mingw.zip --output SDL2.zip
+        run: curl -L https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-devel-2.26.5-mingw.zip --output SDL2.zip
 
       - name: Unzip SDL2
         run: 7z x SDL2.zip
